@@ -21,6 +21,7 @@ public class InMemoryItemStorage implements ItemStorage {
     private final UserStorage userStorage;
     private final HashMap<Integer, Item> items = new HashMap<>();
     private static int itemId = 0;
+
     @Override
     public Item add(Integer userId, ItemDto dto) {
         validateUser(userId);
