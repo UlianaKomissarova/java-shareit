@@ -22,12 +22,16 @@ public class InMemoryItemStorage implements ItemStorage {
     private final HashMap<Integer, Item> items = new HashMap<>();
     private static int itemId = 0;
 
+    public static Integer increaseItemId() {
+        return InMemoryItemStorage.itemId += 1;
+    }
+
     @Override
     public Item add(Integer userId, ItemDto dto) {
         validateUser(userId);
         validateItemData(dto);
 
-        Integer id = ++itemId;
+        Integer id = increaseItemId();
         Item item = ItemMapper.toItem(id, userId, dto);
         items.put(id, item);
 
@@ -38,7 +42,7 @@ public class InMemoryItemStorage implements ItemStorage {
     public Item update(Integer userId, Integer itemId, ItemDto dto) {
         validateUser(userId);
 
-        Item item = validateItemOwner(userId);
+        Item item = validateItemOwner(userId, itemId);
         updateItemData(item, dto);
         items.put(item.getId(), item);
 
@@ -111,7 +115,7 @@ public class InMemoryItemStorage implements ItemStorage {
         }
     }
 
-    private Item validateItemOwner(Integer userId) {
+    private Item validateItemOwner(Integer userId, Integer itemId) {
         Item item = get(userId, itemId);
         if (!Objects.equals(item.getOwner(), userId)) {
             throw new ItemNotFoundException("Редактировать вещь может только её владелец.");

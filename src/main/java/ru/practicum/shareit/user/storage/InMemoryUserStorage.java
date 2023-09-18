@@ -18,6 +18,10 @@ public class InMemoryUserStorage implements UserStorage {
     private final HashMap<Integer, User> users = new HashMap<>();
     private static int userId = 0;
 
+    public static Integer increaseUserId() {
+        return InMemoryUserStorage.userId += 1;
+    }
+
     @Override
     public Collection<User> getAll() {
         return users.values();
@@ -36,7 +40,7 @@ public class InMemoryUserStorage implements UserStorage {
     public User create(UserDto dto) {
         validateEmailAlreadyExist(dto);
 
-        Integer id = ++userId;
+        Integer id = increaseUserId();
         User user = UserMapper.toUser(id, dto);
         users.put(id, user);
 
