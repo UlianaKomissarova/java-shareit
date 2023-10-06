@@ -2,8 +2,8 @@ package ru.practicum.shareit.item.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import ru.practicum.shareit.item.dto.CommentDto;
 import ru.practicum.shareit.item.dto.ItemDto;
-import ru.practicum.shareit.item.model.Item;
 import ru.practicum.shareit.item.service.ItemService;
 
 import javax.validation.Valid;
@@ -16,29 +16,36 @@ public class ItemController {
     private final ItemService itemService;
 
     @PostMapping
-    public Item add(@RequestHeader("X-Sharer-User-Id") Integer userId, @Valid @RequestBody ItemDto dto) {
-        return itemService.add(userId, dto);
+    public ItemDto save(@RequestHeader("X-Sharer-User-Id") Long userId, @Valid @RequestBody ItemDto dto) {
+        return itemService.save(userId, dto);
+    }
+
+    @PostMapping("/{itemId}/comment")
+    public CommentDto save(@RequestHeader("X-Sharer-User-Id") Long userId,
+        @PathVariable Long itemId,
+        @Valid @RequestBody CommentDto dto) {
+        return itemService.saveComment(userId, itemId, dto);
     }
 
     @PatchMapping("/{itemId}")
-    public Item update(@RequestHeader("X-Sharer-User-Id") Integer userId,
-        @PathVariable Integer itemId,
+    public ItemDto update(@RequestHeader("X-Sharer-User-Id") Long userId,
+        @PathVariable Long itemId,
         @Valid @RequestBody ItemDto dto) {
         return itemService.update(userId, itemId, dto);
     }
 
     @GetMapping("/{itemId}")
-    public Item get(@RequestHeader("X-Sharer-User-Id") Integer userId, @PathVariable Integer itemId) {
-        return itemService.get(userId, itemId);
+    public ItemDto findById(@RequestHeader("X-Sharer-User-Id") Long userId, @PathVariable Long itemId) {
+        return itemService.findById(userId, itemId);
     }
 
     @GetMapping
-    public Collection<Item> getAll(@RequestHeader("X-Sharer-User-Id") Integer userId) {
-        return itemService.getAll(userId);
+    public Collection<ItemDto> findAll(@RequestHeader("X-Sharer-User-Id") Long userId) {
+        return itemService.findAll(userId);
     }
 
     @GetMapping("/search")
-    public Collection<Item> search(@RequestHeader("X-Sharer-User-Id") Integer userId, @RequestParam String text) {
+    public Collection<ItemDto> search(@RequestHeader("X-Sharer-User-Id") Long userId, @RequestParam String text) {
         return itemService.search(userId, text);
     }
 }
