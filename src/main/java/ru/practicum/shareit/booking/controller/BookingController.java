@@ -16,14 +16,20 @@ public class BookingController {
 
     @GetMapping("/owner")
     public Collection<BookingDto> findAllByUserId(@RequestHeader("X-Sharer-User-Id") Long userId,
-        @RequestParam(name = "state", defaultValue = "ALL") String state) {
-        return bookingService.findBookingsByItemOwnerId(userId, state);
+        @RequestParam(name = "state", defaultValue = "ALL") String state,
+        @RequestParam(defaultValue = "0", required = false) Integer from,
+        @RequestParam(defaultValue = "10", required = false) Integer size
+    ) {
+        return bookingService.findBookingsByItemOwnerId(userId, state, from, size);
     }
 
     @GetMapping
     public Collection<BookingDto> findByUserIdAndState(@RequestHeader("X-Sharer-User-Id") Long userId,
-        @RequestParam(name = "state", defaultValue = "ALL") String state) {
-        return bookingService.findByUserIdAndState(userId, state);
+        @RequestParam(name = "state", defaultValue = "ALL") String state,
+        @RequestParam(defaultValue = "0", required = false) Integer from,
+        @RequestParam(defaultValue = "10", required = false) Integer size
+    ) {
+        return bookingService.findByUserIdAndState(userId, state, from, size);
     }
 
     @GetMapping("/{bookingId}")
@@ -37,9 +43,11 @@ public class BookingController {
     }
 
     @PatchMapping("/{bookingId}")
-    public BookingDto update(@RequestHeader("X-Sharer-User-Id") Long userId,
+    public BookingDto update(
+        @RequestHeader("X-Sharer-User-Id") Long userId,
         @PathVariable Long bookingId,
-        @RequestParam Boolean approved) {
+        @RequestParam Boolean approved
+    ) {
         return bookingService.approve(userId, bookingId, approved);
     }
 }

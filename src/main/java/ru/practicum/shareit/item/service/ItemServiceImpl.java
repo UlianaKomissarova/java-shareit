@@ -1,6 +1,7 @@
 package ru.practicum.shareit.item.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.booking.model.Booking;
@@ -9,6 +10,8 @@ import ru.practicum.shareit.core.exception.exceptions.*;
 import ru.practicum.shareit.item.dto.*;
 import ru.practicum.shareit.item.model.*;
 import ru.practicum.shareit.item.storage.*;
+import ru.practicum.shareit.request.model.ItemRequest;
+import ru.practicum.shareit.request.repository.ItemRequestRepository;
 import ru.practicum.shareit.user.model.User;
 import ru.practicum.shareit.user.repository.UserRepository;
 
@@ -27,6 +30,7 @@ public class ItemServiceImpl implements ItemService {
     private final UserRepository userRepository;
     private final CommentRepository commentRepository;
     private final BookingRepository bookingRepository;
+    private final ItemRequestRepository requestRepository;
 
     @Transactional
     @Override
@@ -36,6 +40,7 @@ public class ItemServiceImpl implements ItemService {
 
         Item item = toItem(dto);
         item.setOwner(userId);
+        setRequestWhenCreateItem(item, dto);
         item = itemRepository.save(item);
 
         return toItemDto(item);
@@ -73,14 +78,13 @@ public class ItemServiceImpl implements ItemService {
 
     @Transactional(readOnly = true)
     @Override
-    public Collection<ItemDto> findAll(Long userId) {
-        List<Item> items = itemRepository.findAll();
+    public Collection<ItemDto> findAll(Long userId, int from, int size) {
+        Pageable pageable = PageRequest.of(from / size, size);
         List<ItemDto> result = new ArrayList<>();
+        List<Item> items = itemRepository.findByOwner(userId, pageable);
 
         for (Item item : items) {
-            if (item.getOwner().equals(userId)) {
-                result.add(fillItemWithCommentsAndBookings(item));
-            }
+            result.add(fillItemWithCommentsAndBookings(item));
         }
 
         return result;
@@ -88,13 +92,14 @@ public class ItemServiceImpl implements ItemService {
 
     @Transactional(readOnly = true)
     @Override
-    public Collection<ItemDto> search(Long userId, String text) {
+    public Collection<ItemDto> search(Long userId, String text, int from, int size) {
         if (text == null || text.isBlank()) {
             return new ArrayList<>();
         }
 
+        Pageable pageable = PageRequest.of(from / size, size);
         List<ItemDto> result = new ArrayList<>();
-        List<Item> foundItems = itemRepository.search(text);
+        List<Item> foundItems = itemRepository.search(text, pageable);
 
         for (Item foundItem : foundItems) {
             result.add(fillItemWithCommentsAndBookings(foundItem));
@@ -146,6 +151,20 @@ public class ItemServiceImpl implements ItemService {
         return itemRepository.findById(id).orElseThrow(
             () -> new ItemNotFoundException("Товар с id " + id + " не найден.")
         );
+    }
+
+    private ItemRequest getExistingRequest(long id) {
+        return requestRepository.findById(id).orElseThrow(
+            () -> new RequestNotFoundException("Запрос с id " + id + " не найден.")
+        );
+    }
+
+    private void setRequestWhenCreateItem(Item item, ItemDto dto) {
+        if (dto.getRequestId() != null) {
+            Long requestId = dto.getRequestId();
+            ItemRequest request = getExistingRequest(requestId);
+            item.setRequest(request);
+        }
     }
 
     private void validateItemProperties(ItemDto dto) {

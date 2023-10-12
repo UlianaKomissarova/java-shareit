@@ -1,7 +1,7 @@
 package ru.practicum.shareit.booking.service;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.booking.dto.*;
@@ -26,6 +26,7 @@ public class BookingServiceImpl implements BookingService {
     private final BookingRepository bookingRepository;
     private final ItemRepository itemRepository;
     private final UserRepository userRepository;
+    private final StartAndEndValidator startAndEndValidator;
     public static final Sort SORT = Sort.by("start").descending();
 
     @Transactional
@@ -42,8 +43,7 @@ public class BookingServiceImpl implements BookingService {
             throw new BookingBadRequestException("В данный момент товар недоступен для бронирования.");
         }
 
-        validateEndAndStart(dto);
-
+        startAndEndValidator.validate(dto);
         Booking booking = toBooking(dto, item, booker);
         booking.setStatus(WAITING);
 
@@ -76,37 +76,39 @@ public class BookingServiceImpl implements BookingService {
     public BookingDto findById(Long id, Long userId) {
         getExistingUser(userId);
         Booking booking = getExistingBooking(id);
-        validateRequestor(booking, userId);
+        validateRequester(booking, userId);
 
         return toBookingDto(booking);
     }
 
     @Transactional(readOnly = true)
     @Override
-    public Collection<BookingDto> findByUserIdAndState(Long userId, String state) {
+    public Collection<BookingDto> findByUserIdAndState(Long userId, String state, int from, int size) {
+        validatePagination(from, size);
         getExistingUser(userId);
 
         state = checkUserBookingState(state);
+        Pageable pageable = PageRequest.of(from / size, size, SORT);
         List<Booking> bookings;
 
         switch (state) {
             case "ALL":
-                bookings = bookingRepository.findByBookerId(userId, SORT);
+                bookings = bookingRepository.findByBookerId(userId, pageable);
                 break;
             case "CURRENT":
-                bookings = bookingRepository.findByBookerIdCurrent(userId, LocalDateTime.now());
+                bookings = bookingRepository.findByBookerIdCurrent(userId, LocalDateTime.now(), pageable);
                 break;
             case "PAST":
-                bookings = bookingRepository.findByBookerIdAndEndIsBefore(userId, LocalDateTime.now(), SORT);
+                bookings = bookingRepository.findByBookerIdAndEndIsBefore(userId, LocalDateTime.now(), pageable);
                 break;
             case "FUTURE":
-                bookings = bookingRepository.findByBookerIdAndStartIsAfter(userId, LocalDateTime.now(), SORT);
+                bookings = bookingRepository.findByBookerIdAndStartIsAfter(userId, LocalDateTime.now(), pageable);
                 break;
             case "WAITING":
-                bookings = bookingRepository.findByBookerIdAndStatus(userId, WAITING, SORT);
+                bookings = bookingRepository.findByBookerIdAndStatus(userId, WAITING, pageable);
                 break;
             case "REJECTED":
-                bookings = bookingRepository.findByBookerIdAndStatus(userId, REJECTED, SORT);
+                bookings = bookingRepository.findByBookerIdAndStatus(userId, REJECTED, pageable);
                 break;
             default :
                 throw new UnsupportedStatusException("Unknown state: UNSUPPORTED_STATUS");
@@ -119,31 +121,34 @@ public class BookingServiceImpl implements BookingService {
 
     @Transactional(readOnly = true)
     @Override
-    public Collection<BookingDto> findBookingsByItemOwnerId(Long userId, String state) {
+    public Collection<BookingDto> findBookingsByItemOwnerId(Long userId, String state, int from, int size) {
+        validatePagination(from, size);
         getExistingUser(userId);
         hasUserZeroItems(userId);
 
         state = checkUserBookingState(state);
+        Pageable pageable = PageRequest.of(from / size, size, SORT);
         List<Booking> bookings;
 
         switch (state) {
             case "ALL":
-                bookings = bookingRepository.findBookingsByItemOwner(userId, SORT);
+                bookings = bookingRepository.findBookingsByItemOwner(userId, pageable);
                 break;
             case "CURRENT":
-                bookings = bookingRepository.findBookingsByItemOwnerCurrent(userId, LocalDateTime.now());
+                bookings = bookingRepository.findBookingsByItemOwnerCurrent(userId, LocalDateTime.now(),
+                    PageRequest.of(from / size, size, Sort.by("start").ascending()));
                 break;
             case "PAST":
-                bookings = bookingRepository.findBookingsByItemOwnerAndEndIsBefore(userId, LocalDateTime.now(), SORT);
+                bookings = bookingRepository.findBookingsByItemOwnerAndEndIsBefore(userId, LocalDateTime.now(), pageable);
                 break;
             case "FUTURE":
-                bookings = bookingRepository.findBookingsByItemOwnerAndStartIsAfter(userId, LocalDateTime.now(), SORT);
+                bookings = bookingRepository.findBookingsByItemOwnerAndStartIsAfter(userId, LocalDateTime.now(), pageable);
                 break;
             case "WAITING":
-                bookings = bookingRepository.findBookingsByItemOwnerAndStatus(userId, WAITING, SORT);
+                bookings = bookingRepository.findBookingsByItemOwnerAndStatus(userId, WAITING, pageable);
                 break;
             case "REJECTED":
-                bookings = bookingRepository.findBookingsByItemOwnerAndStatus(userId, REJECTED, SORT);
+                bookings = bookingRepository.findBookingsByItemOwnerAndStatus(userId, REJECTED, pageable);
                 break;
             default:
                 throw new UnsupportedStatusException("Unknown state: UNSUPPORTED_STATUS");
@@ -152,32 +157,6 @@ public class BookingServiceImpl implements BookingService {
         return bookings.stream()
             .map(BookingMapper::toBookingDto)
             .collect(Collectors.toList());
-    }
-
-    private void validateEndAndStart(ShortBookingDto dto) {
-        if (dto.getStart() == null) {
-            throw new BookingBadRequestException("Срок начала аренды не указан.");
-        }
-
-        if (dto.getEnd() == null) {
-            throw new BookingBadRequestException("Срок конца аренды не указан.");
-        }
-
-        if (dto.getEnd().isBefore(dto.getStart())) {
-            throw new BookingBadRequestException("Конец срока аренды не может быть раньше старта.");
-        }
-
-        if (dto.getEnd().isBefore(LocalDateTime.now())) {
-            throw new BookingBadRequestException("Конец срока аренды должен быть позже.");
-        }
-
-        if (dto.getStart().isBefore(LocalDateTime.now())) {
-            throw new BookingBadRequestException("Старт срока аренды должен быть раньше.");
-        }
-
-        if (dto.getEnd().isEqual(dto.getStart())) {
-            throw new BookingBadRequestException("Конец срока аренды не может совпадать со стартом.");
-        }
     }
 
     private String checkUserBookingState(String state) {
@@ -217,13 +196,19 @@ public class BookingServiceImpl implements BookingService {
         }
     }
 
-    private void validateRequestor(Booking booking, long userId) {
+    private void validateRequester(Booking booking, long userId) {
         long bookingAuthorId = booking.getBooker().getId();
         long itemOwnerId = booking.getItem().getOwner();
 
         if (bookingAuthorId != userId && itemOwnerId != userId) {
             throw new BookingNotFoundException("Запрос может быть выполнен либо автором бронирования, " +
                 "либо владельцем вещи, к которой относится бронирование.");
+        }
+    }
+
+    private void validatePagination(Integer from, Integer size) {
+        if (from < 0 || size < 0) {
+            throw new ItemRequestBadRequestException("Параметры пагинации должны быть положительными.");
         }
     }
 }

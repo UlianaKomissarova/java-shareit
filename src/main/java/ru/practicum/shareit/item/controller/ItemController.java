@@ -40,12 +40,17 @@ public class ItemController {
     }
 
     @GetMapping
-    public Collection<ItemDto> findAll(@RequestHeader("X-Sharer-User-Id") Long userId) {
-        return itemService.findAll(userId);
+    public Collection<ItemDto> findAll(@RequestHeader("X-Sharer-User-Id") Long userId,
+        @RequestParam(defaultValue = "0", required = false) Integer from,
+        @RequestParam(defaultValue = "10", required = false) Integer size) {
+        return itemService.findAll(userId, from, size);
     }
 
     @GetMapping("/search")
-    public Collection<ItemDto> search(@RequestHeader("X-Sharer-User-Id") Long userId, @RequestParam String text) {
-        return itemService.search(userId, text);
+    public Collection<ItemDto> search(@RequestHeader("X-Sharer-User-Id") Long userId,
+        @RequestParam String text,
+        @RequestParam(defaultValue = "0", required = false) Integer from,
+        @RequestParam(defaultValue = "10", required = false) Integer size) {
+        return itemService.search(userId, text, from, size);
     }
 }

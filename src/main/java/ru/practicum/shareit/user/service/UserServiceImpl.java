@@ -36,10 +36,6 @@ public class UserServiceImpl implements UserService {
     @Transactional
     @Override
     public UserDto save(UserDto dto) {
-        if (dto.getEmail() == null || !dto.getEmail().contains("@")) {
-            throw new UserBadRequestException("При создании должен быть указан корректный email.");
-        }
-
         return toUserDto(userRepository.save(toUser(dto)));
     }
 
