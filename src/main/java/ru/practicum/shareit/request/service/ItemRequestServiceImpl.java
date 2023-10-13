@@ -55,17 +55,9 @@ public class ItemRequestServiceImpl implements ItemRequestService {
     @Override
     public Collection<ItemRequestDto> findAll(Long userId) {
         getExistingUser(userId);
+        List<ItemRequest> requests = requestRepository.findByRequesterId(userId, SORT);
 
-        List<ItemRequestDto> requests = requestRepository.findByRequesterId(userId, SORT)
-            .stream()
-            .map(RequestMapper::toRequestDto)
-            .collect(Collectors.toList());
-
-        for (ItemRequestDto request : requests) {
-            fillRequestsWithItems(request);
-        }
-
-        return requests;
+        return mapListToDtoList(requests);
     }
 
     @Transactional(readOnly = true)
@@ -74,17 +66,21 @@ public class ItemRequestServiceImpl implements ItemRequestService {
         validatePagination(from, size);
         getExistingUser(userId);
         Pageable pageable = PageRequest.of(from / size, size, SORT);
+        List<ItemRequest> requests = requestRepository.findByRequesterIdIsNot(userId, pageable);
 
-        List<ItemRequestDto> requests = requestRepository.findByRequesterIdIsNot(userId, pageable)
-            .stream()
+        return mapListToDtoList(requests);
+    }
+
+    private List<ItemRequestDto> mapListToDtoList(List<ItemRequest> requests) {
+        List<ItemRequestDto> result = requests.stream()
             .map(RequestMapper::toRequestDto)
             .collect(Collectors.toList());
 
-        for (ItemRequestDto request : requests) {
+        for (ItemRequestDto request : result) {
             fillRequestsWithItems(request);
         }
 
-        return requests;
+        return result;
     }
 
     private void validatePagination(Integer from, Integer size) {

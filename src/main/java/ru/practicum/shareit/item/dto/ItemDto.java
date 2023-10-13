@@ -12,8 +12,13 @@ import java.util.List;
 @AllArgsConstructor
 public class ItemDto {
     private Long id;
+    @NotNull
+    @NotEmpty
     private String name;
+    @NotNull
+    @NotEmpty
     private String description;
+    @NotNull
     private Boolean available;
     private List<CommentDto> comments;
     private ShortBookingDto lastBooking;

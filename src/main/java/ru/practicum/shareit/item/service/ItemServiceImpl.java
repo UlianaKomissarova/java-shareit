@@ -35,7 +35,6 @@ public class ItemServiceImpl implements ItemService {
     @Transactional
     @Override
     public ItemDto save(Long userId, ItemDto dto) {
-        validateItemProperties(dto);
         getExistingUser(userId);
 
         Item item = toItem(dto);
@@ -111,21 +110,11 @@ public class ItemServiceImpl implements ItemService {
     @Transactional
     @Override
     public CommentDto saveComment(Long userId, Long itemId, CommentDto dto) {
-        validateCommentText(dto.getText());
         User user = getExistingUser(userId);
         Item item = getExistingItem(itemId);
 
         List<Booking> previousBookings = bookingRepository.findBookingsToAddComment(itemId, userId, LocalDateTime.now());
-        if (previousBookings.isEmpty()) {
-            throw new CommentBadRequestException(
-                "Пользователь может оставить комментарий только на вещь, которую ранее использовал."
-            );
-        }
-        for (Booking booking : previousBookings) {
-            if (booking.getEnd().isAfter(LocalDateTime.now())) {
-                throw new CommentBadRequestException("Оставить комментарий можно только после окончания срока аренды");
-            }
-        }
+        validateBookingForComment(previousBookings);
 
         Comment comment = toComment(dto);
         comment.setCreated(LocalDateTime.now());
@@ -135,9 +124,16 @@ public class ItemServiceImpl implements ItemService {
         return toCommentDto(commentRepository.save(comment));
     }
 
-    private void validateCommentText(String text) {
-        if (text.isEmpty()) {
-            throw new CommentBadRequestException("Комментарий не может быть пустым.");
+    private void validateBookingForComment(List<Booking> previousBookings) {
+        if (previousBookings.isEmpty()) {
+            throw new CommentBadRequestException(
+                "Пользователь может оставить комментарий только на вещь, которую ранее использовал."
+            );
+        }
+        for (Booking booking : previousBookings) {
+            if (booking.getEnd().isAfter(LocalDateTime.now())) {
+                throw new CommentBadRequestException("Оставить комментарий можно только после окончания срока аренды");
+            }
         }
     }
 
@@ -164,20 +160,6 @@ public class ItemServiceImpl implements ItemService {
             Long requestId = dto.getRequestId();
             ItemRequest request = getExistingRequest(requestId);
             item.setRequest(request);
-        }
-    }
-
-    private void validateItemProperties(ItemDto dto) {
-        if (dto.getName() == null || dto.getName().isBlank()) {
-            throw new ItemBadRequestException("Не указано имя.");
-        }
-
-        if (dto.getDescription() == null || dto.getDescription().isBlank()) {
-            throw new ItemBadRequestException("Не указано описание.");
-        }
-
-        if (dto.getAvailable() == null) {
-            throw new ItemBadRequestException("Не указана доступность товара.");
         }
     }
 

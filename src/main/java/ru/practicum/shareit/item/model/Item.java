@@ -4,8 +4,6 @@ import lombok.*;
 import ru.practicum.shareit.request.model.ItemRequest;
 
 import javax.persistence.*;
-import javax.validation.constraints.NotEmpty;
-import javax.validation.constraints.NotNull;
 
 @Data
 @Builder
@@ -18,16 +16,12 @@ public class Item {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "item_id", nullable = false)
     private Long id;
-    @NotEmpty
     @Column(nullable = false)
     private String name;
-    @NotEmpty
     @Column(nullable = false)
     private String description;
-    @NotNull
     @Column(name = "is_available", nullable = false)
     private Boolean available;
-    @NotNull
     @Column(name = "owner_id", nullable = false)
     private Long owner;
     @ManyToOne
