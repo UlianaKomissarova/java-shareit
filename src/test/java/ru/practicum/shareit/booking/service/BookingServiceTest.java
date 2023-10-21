@@ -253,7 +253,7 @@ public class BookingServiceTest {
     @Test
     void findByUserIdAndState_whenIncorrectPagination_thenExceptionReturned() {
         assertThrows(BookingBadRequestException.class,
-            () -> bookingService.findByUserIdAndState(2l, "PAST", -1, 0));
+            () -> bookingService.findByUserIdAndState(2L, "PAST", -1, 0));
     }
 
     @Test
