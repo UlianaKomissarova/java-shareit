@@ -208,7 +208,7 @@ public class BookingServiceImpl implements BookingService {
 
     private void validatePagination(Integer from, Integer size) {
         if (from < 0 || size < 0) {
-            throw new ItemRequestBadRequestException("Параметры пагинации должны быть положительными.");
+            throw new BookingBadRequestException("Параметры пагинации должны быть положительными.");
         }
     }
 }

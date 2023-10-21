@@ -45,13 +45,15 @@ public class UserServiceImpl implements UserService {
         User updated = getExistingUser(userId);
         updateName(updated, dto.getName());
         updateEmail(updated, dto.getEmail());
+        userRepository.save(updated);
 
-        return toUserDto(userRepository.save(updated));
+        return toUserDto(updated);
     }
 
     @Transactional
     @Override
     public void delete(Long id) {
+        getExistingUser(id);
         userRepository.deleteById(id);
     }
 
