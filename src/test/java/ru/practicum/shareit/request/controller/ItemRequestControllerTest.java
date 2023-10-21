@@ -9,7 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.shareit.core.exception.exceptions.*;
 import ru.practicum.shareit.request.dto.ItemRequestDto;
-import ru.practicum.shareit.request.service.ItemRequestService;
+import ru.practicum.shareit.request.service.ItemRequestServiceInterface;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,13 +25,13 @@ public class ItemRequestControllerTest {
     private ObjectMapper objectMapper;
     private MockMvc mockMvc;
     @MockBean
-    private ItemRequestService requestService;
+    private ItemRequestServiceInterface requestService;
     private static ItemRequestDto requestDto;
     private static ItemRequestDto requestWithNullDescription;
     private static ItemRequestDto requestWithBlankDescription;
 
     @Autowired
-    public ItemRequestControllerTest(ObjectMapper objectMapper, MockMvc mockMvc, ItemRequestService requestService) {
+    public ItemRequestControllerTest(ObjectMapper objectMapper, MockMvc mockMvc, ItemRequestServiceInterface requestService) {
         this.objectMapper = objectMapper;
         this.mockMvc = mockMvc;
         this.requestService = requestService;

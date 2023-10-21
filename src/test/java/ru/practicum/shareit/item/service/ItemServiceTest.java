@@ -24,7 +24,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class ItemServiceImplTest {
+public class ItemServiceTest {
     @Mock
     private UserRepository userRepository;
     @Mock
@@ -36,7 +36,7 @@ public class ItemServiceImplTest {
     @Mock
     private ItemRequestRepository requestRepository;
     @InjectMocks
-    private ItemServiceImpl itemService;
+    private ItemService itemService;
     private long itemId;
     private long userId;
     private Item expectedItem;

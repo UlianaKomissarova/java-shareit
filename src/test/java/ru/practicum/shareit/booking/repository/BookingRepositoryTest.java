@@ -13,7 +13,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static ru.practicum.shareit.booking.model.Status.*;
-import static ru.practicum.shareit.booking.service.BookingServiceImpl.SORT;
+import static ru.practicum.shareit.booking.service.BookingService.SORT;
 
 @DataJpaTest
 public class BookingRepositoryTest {

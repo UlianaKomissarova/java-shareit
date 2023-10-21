@@ -3,7 +3,7 @@ package ru.practicum.shareit.item.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.shareit.item.dto.*;
-import ru.practicum.shareit.item.service.ItemService;
+import ru.practicum.shareit.item.service.ItemServiceInterface;
 
 import javax.validation.Valid;
 import java.util.Collection;
@@ -12,37 +12,37 @@ import java.util.Collection;
 @RequestMapping("/items")
 @RequiredArgsConstructor
 public class ItemController {
-    private final ItemService itemService;
+    private final ItemServiceInterface itemServiceInterface;
 
     @PostMapping
     public ItemDto save(@RequestHeader("X-Sharer-User-Id") Long userId, @Valid @RequestBody ItemDto dto) {
-        return itemService.save(userId, dto);
+        return itemServiceInterface.save(userId, dto);
     }
 
     @PostMapping("/{itemId}/comment")
     public CommentDto save(@RequestHeader("X-Sharer-User-Id") Long userId,
         @PathVariable Long itemId,
         @Valid @RequestBody CommentDto dto) {
-        return itemService.saveComment(userId, itemId, dto);
+        return itemServiceInterface.saveComment(userId, itemId, dto);
     }
 
     @PatchMapping("/{itemId}")
     public ItemDto update(@RequestHeader("X-Sharer-User-Id") Long userId,
         @PathVariable Long itemId,
         @RequestBody ItemDto dto) {
-        return itemService.update(userId, itemId, dto);
+        return itemServiceInterface.update(userId, itemId, dto);
     }
 
     @GetMapping("/{itemId}")
     public ItemDto findById(@RequestHeader("X-Sharer-User-Id") Long userId, @PathVariable Long itemId) {
-        return itemService.findById(userId, itemId);
+        return itemServiceInterface.findById(userId, itemId);
     }
 
     @GetMapping
     public Collection<ItemDto> findAll(@RequestHeader("X-Sharer-User-Id") Long userId,
         @RequestParam(defaultValue = "0", required = false) Integer from,
         @RequestParam(defaultValue = "10", required = false) Integer size) {
-        return itemService.findAll(userId, from, size);
+        return itemServiceInterface.findAll(userId, from, size);
     }
 
     @GetMapping("/search")
@@ -50,6 +50,6 @@ public class ItemController {
         @RequestParam String text,
         @RequestParam(defaultValue = "0", required = false) Integer from,
         @RequestParam(defaultValue = "10", required = false) Integer size) {
-        return itemService.search(userId, text, from, size);
+        return itemServiceInterface.search(userId, text, from, size);
     }
 }

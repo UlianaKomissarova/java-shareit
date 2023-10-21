@@ -8,7 +8,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.shareit.booking.dto.*;
-import ru.practicum.shareit.booking.service.BookingService;
+import ru.practicum.shareit.booking.service.BookingServiceInterface;
 import ru.practicum.shareit.core.exception.exceptions.*;
 import ru.practicum.shareit.item.model.Item;
 import ru.practicum.shareit.user.model.User;
@@ -28,17 +28,17 @@ public class BookingControllerTest {
     private ObjectMapper objectMapper;
     private MockMvc mockMvc;
     @MockBean
-    private BookingService bookingService;
+    private BookingServiceInterface bookingServiceInterface;
     private static ShortBookingDto shortBookingDto;
     private static BookingDto bookingDto;
     private static Item item;
     private static User booker;
 
     @Autowired
-    public BookingControllerTest(ObjectMapper objectMapper, MockMvc mockMvc, BookingService bookingService) {
+    public BookingControllerTest(ObjectMapper objectMapper, MockMvc mockMvc, BookingServiceInterface bookingServiceInterface) {
         this.objectMapper = objectMapper;
         this.mockMvc = mockMvc;
-        this.bookingService = bookingService;
+        this.bookingServiceInterface = bookingServiceInterface;
     }
 
     @BeforeAll
@@ -76,7 +76,7 @@ public class BookingControllerTest {
 
     @Test
     void saveBooking_whenInvoked_thenStatusSuccessfulAndBookingReturned() throws Exception {
-        when(bookingService.save(anyLong(), any(ShortBookingDto.class))).thenReturn(bookingDto);
+        when(bookingServiceInterface.save(anyLong(), any(ShortBookingDto.class))).thenReturn(bookingDto);
 
         mockMvc.perform(
                 post("/bookings")
@@ -87,7 +87,7 @@ public class BookingControllerTest {
             .andExpect(status().is2xxSuccessful())
             .andExpect(jsonPath("$.id", is(shortBookingDto.getId()), Long.class));
 
-        verify(bookingService, times(1)).save(anyLong(), any(ShortBookingDto.class));
+        verify(bookingServiceInterface, times(1)).save(anyLong(), any(ShortBookingDto.class));
     }
 
     @Test
@@ -97,7 +97,7 @@ public class BookingControllerTest {
             .itemId(1L)
             .bookerId(1L)
             .build();
-        when(bookingService.save(anyLong(), any(ShortBookingDto.class))).thenThrow(BookingBadRequestException.class);
+        when(bookingServiceInterface.save(anyLong(), any(ShortBookingDto.class))).thenThrow(BookingBadRequestException.class);
 
         mockMvc.perform(
                 post("/bookings")
@@ -115,7 +115,7 @@ public class BookingControllerTest {
             .itemId(1L)
             .bookerId(1L)
             .build();
-        when(bookingService.save(anyLong(), any(ShortBookingDto.class))).thenThrow(BookingBadRequestException.class);
+        when(bookingServiceInterface.save(anyLong(), any(ShortBookingDto.class))).thenThrow(BookingBadRequestException.class);
 
         mockMvc.perform(
                 post("/bookings")
@@ -134,7 +134,7 @@ public class BookingControllerTest {
             .itemId(1L)
             .bookerId(1L)
             .build();
-        when(bookingService.save(anyLong(), any(ShortBookingDto.class))).thenThrow(BookingBadRequestException.class);
+        when(bookingServiceInterface.save(anyLong(), any(ShortBookingDto.class))).thenThrow(BookingBadRequestException.class);
 
         mockMvc.perform(
                 post("/bookings")
@@ -153,7 +153,7 @@ public class BookingControllerTest {
             .itemId(1L)
             .bookerId(1L)
             .build();
-        when(bookingService.save(anyLong(), any(ShortBookingDto.class))).thenThrow(BookingBadRequestException.class);
+        when(bookingServiceInterface.save(anyLong(), any(ShortBookingDto.class))).thenThrow(BookingBadRequestException.class);
 
         mockMvc.perform(
                 post("/bookings")
@@ -166,7 +166,7 @@ public class BookingControllerTest {
 
     @Test
     public void findBooking_whenExist_thenStatus200andBookingReturned() throws Exception {
-        when(bookingService.findById(anyLong(), anyLong())).thenReturn(bookingDto);
+        when(bookingServiceInterface.findById(anyLong(), anyLong())).thenReturn(bookingDto);
 
         mockMvc.perform(
                 get("/bookings/{bookingId}", 1)
@@ -174,12 +174,12 @@ public class BookingControllerTest {
             .andExpect(status().isOk())
             .andExpect(content().json(objectMapper.writeValueAsString(bookingDto)));
 
-        verify(bookingService, times(1)).findById(anyLong(), anyLong());
+        verify(bookingServiceInterface, times(1)).findById(anyLong(), anyLong());
     }
 
     @Test
     public void findBooking_whenNotExist_thenThrowNotFound() throws Exception {
-        when(bookingService.findById(anyLong(), anyLong())).thenThrow(BookingNotFoundException.class);
+        when(bookingServiceInterface.findById(anyLong(), anyLong())).thenThrow(BookingNotFoundException.class);
 
         mockMvc.perform(get("/bookings/{bookingId}", 1L)
                 .header("X-Sharer-User-Id", 1))
@@ -189,7 +189,7 @@ public class BookingControllerTest {
     @Test
     public void findByUserIdAndState_whenInvoked_thenStatus200andReturnBookingList() throws Exception {
         List<BookingDto> expectedBookings = List.of(bookingDto);
-        when(bookingService.findByUserIdAndState(anyLong(), anyString(), anyInt(), anyInt())).thenReturn(expectedBookings);
+        when(bookingServiceInterface.findByUserIdAndState(anyLong(), anyString(), anyInt(), anyInt())).thenReturn(expectedBookings);
 
         mockMvc.perform(
                 get("/bookings")
@@ -198,13 +198,13 @@ public class BookingControllerTest {
             .andExpect(status().isOk())
             .andExpect(content().json(objectMapper.writeValueAsString(List.of(bookingDto))));
 
-        verify(bookingService, times(1)).findByUserIdAndState(anyLong(), anyString(), anyInt(), anyInt());
+        verify(bookingServiceInterface, times(1)).findByUserIdAndState(anyLong(), anyString(), anyInt(), anyInt());
     }
 
     @Test
     public void findBookingsByItemOwnerId_whenInvoked_thenStatus200andReturnBookingList() throws Exception {
         List<BookingDto> expectedBookings = List.of(bookingDto);
-        when(bookingService.findBookingsByItemOwnerId(anyLong(), anyString(), anyInt(), anyInt())).thenReturn(expectedBookings);
+        when(bookingServiceInterface.findBookingsByItemOwnerId(anyLong(), anyString(), anyInt(), anyInt())).thenReturn(expectedBookings);
 
         mockMvc.perform(
                 get("/bookings/owner")
@@ -213,12 +213,12 @@ public class BookingControllerTest {
             .andExpect(status().isOk())
             .andExpect(content().json(objectMapper.writeValueAsString(List.of(bookingDto))));
 
-        verify(bookingService, times(1)).findBookingsByItemOwnerId(anyLong(), anyString(), anyInt(), anyInt());
+        verify(bookingServiceInterface, times(1)).findBookingsByItemOwnerId(anyLong(), anyString(), anyInt(), anyInt());
     }
 
     @Test
     public void updateBooking_thenStatus200andUpdatedReturns() throws Exception {
-        when(bookingService.approve(anyLong(), anyLong(), anyBoolean())).thenReturn(bookingDto);
+        when(bookingServiceInterface.approve(anyLong(), anyLong(), anyBoolean())).thenReturn(bookingDto);
 
         mockMvc.perform(
                 patch("/bookings/1")
@@ -229,12 +229,12 @@ public class BookingControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value(bookingDto.getStatus()));
 
-        verify(bookingService, times(1)).approve(anyLong(), anyLong(), anyBoolean());
+        verify(bookingServiceInterface, times(1)).approve(anyLong(), anyLong(), anyBoolean());
     }
 
     @Test
     public void updateBooking_whenNotOwner_thenExceptionReturns() throws Exception {
-        when(bookingService.approve(anyLong(), anyLong(), anyBoolean())).thenThrow(UserNotFoundException.class);
+        when(bookingServiceInterface.approve(anyLong(), anyLong(), anyBoolean())).thenThrow(UserNotFoundException.class);
 
         mockMvc.perform(
                 patch("/bookings/1")

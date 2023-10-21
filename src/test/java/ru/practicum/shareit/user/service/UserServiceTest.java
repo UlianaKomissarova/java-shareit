@@ -16,11 +16,11 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class UserServiceImplTest {
+public class UserServiceTest {
     @Mock
     private UserRepository userRepository;
     @InjectMocks
-    private UserServiceImpl userService;
+    private UserService userService;
     private long userId;
     private User expectedUser;
     @Captor

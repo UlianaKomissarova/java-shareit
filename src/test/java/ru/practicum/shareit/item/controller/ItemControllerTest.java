@@ -9,7 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.shareit.core.exception.exceptions.*;
 import ru.practicum.shareit.item.dto.*;
-import ru.practicum.shareit.item.service.ItemService;
+import ru.practicum.shareit.item.service.ItemServiceInterface;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,14 +25,14 @@ public class ItemControllerTest {
     private ObjectMapper objectMapper;
     private MockMvc mockMvc;
     @MockBean
-    private ItemService itemService;
+    private ItemServiceInterface itemServiceInterface;
     private static ItemDto itemDto;
 
     @Autowired
-    public ItemControllerTest(ObjectMapper objectMapper, MockMvc mockMvc, ItemService itemService) {
+    public ItemControllerTest(ObjectMapper objectMapper, MockMvc mockMvc, ItemServiceInterface itemServiceInterface) {
         this.objectMapper = objectMapper;
         this.mockMvc = mockMvc;
-        this.itemService = itemService;
+        this.itemServiceInterface = itemServiceInterface;
     }
 
     @BeforeAll
@@ -46,7 +46,7 @@ public class ItemControllerTest {
 
     @Test
     void saveItem_whenInvoked_thenStatusSuccessfulAndItemReturned() throws Exception {
-        when(itemService.save(anyLong(), any(ItemDto.class))).thenReturn(itemDto);
+        when(itemServiceInterface.save(anyLong(), any(ItemDto.class))).thenReturn(itemDto);
 
         mockMvc.perform(
                 post("/items")
@@ -57,7 +57,7 @@ public class ItemControllerTest {
             .andExpect(status().is2xxSuccessful())
             .andExpect(content().json(objectMapper.writeValueAsString(itemDto)));
 
-        verify(itemService, times(1)).save(anyLong(), any(ItemDto.class));
+        verify(itemServiceInterface, times(1)).save(anyLong(), any(ItemDto.class));
     }
 
     @Test
@@ -68,7 +68,7 @@ public class ItemControllerTest {
             .available(true)
             .build();
 
-        when(itemService.save(anyLong(), any(ItemDto.class))).thenThrow(UserBadRequestException.class);
+        when(itemServiceInterface.save(anyLong(), any(ItemDto.class))).thenThrow(UserBadRequestException.class);
 
         mockMvc.perform(
                 post("/items")
@@ -78,7 +78,7 @@ public class ItemControllerTest {
             )
             .andExpect(status().is4xxClientError());
 
-        verify(itemService, never()).save(anyLong(), any(ItemDto.class));
+        verify(itemServiceInterface, never()).save(anyLong(), any(ItemDto.class));
     }
 
     @Test
@@ -88,7 +88,7 @@ public class ItemControllerTest {
             .available(true)
             .build();
 
-        when(itemService.save(anyLong(), any(ItemDto.class))).thenThrow(UserBadRequestException.class);
+        when(itemServiceInterface.save(anyLong(), any(ItemDto.class))).thenThrow(UserBadRequestException.class);
 
         mockMvc.perform(
                 post("/items")
@@ -98,7 +98,7 @@ public class ItemControllerTest {
             )
             .andExpect(status().is4xxClientError());
 
-        verify(itemService, never()).save(anyLong(), any(ItemDto.class));
+        verify(itemServiceInterface, never()).save(anyLong(), any(ItemDto.class));
     }
 
     @Test
@@ -109,7 +109,7 @@ public class ItemControllerTest {
             .available(true)
             .build();
 
-        when(itemService.save(anyLong(), any(ItemDto.class))).thenThrow(UserBadRequestException.class);
+        when(itemServiceInterface.save(anyLong(), any(ItemDto.class))).thenThrow(UserBadRequestException.class);
 
         mockMvc.perform(
                 post("/items")
@@ -119,7 +119,7 @@ public class ItemControllerTest {
             )
             .andExpect(status().is4xxClientError());
 
-        verify(itemService, never()).save(anyLong(), any(ItemDto.class));
+        verify(itemServiceInterface, never()).save(anyLong(), any(ItemDto.class));
     }
 
     @Test
@@ -129,7 +129,7 @@ public class ItemControllerTest {
             .available(true)
             .build();
 
-        when(itemService.save(anyLong(), any(ItemDto.class))).thenThrow(UserBadRequestException.class);
+        when(itemServiceInterface.save(anyLong(), any(ItemDto.class))).thenThrow(UserBadRequestException.class);
 
         mockMvc.perform(
                 post("/items")
@@ -139,7 +139,7 @@ public class ItemControllerTest {
             )
             .andExpect(status().is4xxClientError());
 
-        verify(itemService, never()).save(anyLong(), any(ItemDto.class));
+        verify(itemServiceInterface, never()).save(anyLong(), any(ItemDto.class));
     }
 
     @Test
@@ -149,7 +149,7 @@ public class ItemControllerTest {
             .description("cool tool")
             .build();
 
-        when(itemService.save(anyLong(), any(ItemDto.class))).thenThrow(UserBadRequestException.class);
+        when(itemServiceInterface.save(anyLong(), any(ItemDto.class))).thenThrow(UserBadRequestException.class);
 
         mockMvc.perform(
                 post("/items")
@@ -159,7 +159,7 @@ public class ItemControllerTest {
             )
             .andExpect(status().is4xxClientError());
 
-        verify(itemService, never()).save(anyLong(), any(ItemDto.class));
+        verify(itemServiceInterface, never()).save(anyLong(), any(ItemDto.class));
     }
 
     @Test
@@ -170,7 +170,7 @@ public class ItemControllerTest {
             .created(LocalDateTime.now())
             .build();
 
-        when(itemService.saveComment(anyLong(), anyLong(), any(CommentDto.class))).thenReturn(commentDto);
+        when(itemServiceInterface.saveComment(anyLong(), anyLong(), any(CommentDto.class))).thenReturn(commentDto);
 
         mockMvc.perform(
                 post("/items/{itemId}/comment", 1)
@@ -181,12 +181,12 @@ public class ItemControllerTest {
             .andExpect(status().is2xxSuccessful())
             .andExpect(content().json(objectMapper.writeValueAsString(commentDto)));
 
-        verify(itemService, times(1)).saveComment(anyLong(), anyLong(), any(CommentDto.class));
+        verify(itemServiceInterface, times(1)).saveComment(anyLong(), anyLong(), any(CommentDto.class));
     }
 
     @Test
     public void findItem_whenExist_thenStatus200andItemReturned() throws Exception {
-        when(itemService.findById(anyLong(), anyLong())).thenReturn(itemDto);
+        when(itemServiceInterface.findById(anyLong(), anyLong())).thenReturn(itemDto);
 
         mockMvc.perform(
                 get("/items/{itemId}", 1)
@@ -194,12 +194,12 @@ public class ItemControllerTest {
             .andExpect(status().isOk())
             .andExpect(content().json(objectMapper.writeValueAsString(itemDto)));
 
-        verify(itemService, times(1)).findById(anyLong(), anyLong());
+        verify(itemServiceInterface, times(1)).findById(anyLong(), anyLong());
     }
 
     @Test
     public void findItem_whenNotExist_thenThrowNotFound() throws Exception {
-        when(itemService.findById(anyLong(), anyLong())).thenThrow(ItemNotFoundException.class);
+        when(itemServiceInterface.findById(anyLong(), anyLong())).thenThrow(ItemNotFoundException.class);
 
         mockMvc.perform(get("/items/{itemId}", 1L)
                 .header("X-Sharer-User-Id", 1))
@@ -209,7 +209,7 @@ public class ItemControllerTest {
     @Test
     public void findAll_whenInvoked_thenStatus200andReturnItemList() throws Exception {
         List<ItemDto> expectedItems = List.of(itemDto);
-        when(itemService.findAll(anyLong(), anyInt(), anyInt())).thenReturn(expectedItems);
+        when(itemServiceInterface.findAll(anyLong(), anyInt(), anyInt())).thenReturn(expectedItems);
 
         mockMvc.perform(
                 get("/items")
@@ -217,13 +217,13 @@ public class ItemControllerTest {
             .andExpect(status().isOk())
             .andExpect(content().json(objectMapper.writeValueAsString(List.of(itemDto))));
 
-        verify(itemService, times(1)).findAll(anyLong(), anyInt(), anyInt());
+        verify(itemServiceInterface, times(1)).findAll(anyLong(), anyInt(), anyInt());
     }
 
     @Test
     public void search_whenInvoked_thenStatus200andReturnItemList() throws Exception {
         List<ItemDto> expectedItems = List.of(itemDto);
-        when(itemService.search(anyLong(), anyString(), anyInt(), anyInt())).thenReturn(expectedItems);
+        when(itemServiceInterface.search(anyLong(), anyString(), anyInt(), anyInt())).thenReturn(expectedItems);
 
         mockMvc.perform(
                 get("/items/search")
@@ -232,12 +232,12 @@ public class ItemControllerTest {
             .andExpect(status().isOk())
             .andExpect(content().json(objectMapper.writeValueAsString(List.of(itemDto))));
 
-        verify(itemService, times(1)).search(anyLong(), anyString(), anyInt(), anyInt());
+        verify(itemServiceInterface, times(1)).search(anyLong(), anyString(), anyInt(), anyInt());
     }
 
     @Test
     public void updateItem_thenStatus200andUpdatedReturns() throws Exception {
-        when(itemService.update(anyLong(), anyLong(), any())).thenReturn(itemDto);
+        when(itemServiceInterface.update(anyLong(), anyLong(), any())).thenReturn(itemDto);
 
         mockMvc.perform(
                 patch("/items/1")
@@ -247,12 +247,12 @@ public class ItemControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.name").value(itemDto.getName()));
 
-        verify(itemService, times(1)).update(anyLong(), anyLong(), any(ItemDto.class));
+        verify(itemServiceInterface, times(1)).update(anyLong(), anyLong(), any(ItemDto.class));
     }
 
     @Test
     public void updateItem_whenNotOwner_thenExceptionReturns() throws Exception {
-        when(itemService.update(anyLong(), anyLong(), any())).thenThrow(UserNotFoundException.class);
+        when(itemServiceInterface.update(anyLong(), anyLong(), any())).thenThrow(UserNotFoundException.class);
 
         mockMvc.perform(
                 patch("/items/1")

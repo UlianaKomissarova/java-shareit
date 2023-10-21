@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class ItemRequestServiceImplTest {
+public class ItemRequestServiceTest {
     @Mock
     private ItemRequestRepository requestRepository;
     @Mock
@@ -29,7 +29,7 @@ public class ItemRequestServiceImplTest {
     @Mock
     private ItemRepository itemRepository;
     @InjectMocks
-    private ItemRequestServiceImpl requestService;
+    private ItemRequestService requestService;
     private long requestId;
     private long userId;
     private ItemRequest expectedRequest;

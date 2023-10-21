@@ -22,10 +22,10 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static ru.practicum.shareit.booking.model.Status.*;
-import static ru.practicum.shareit.booking.service.BookingServiceImpl.SORT;
+import static ru.practicum.shareit.booking.service.BookingService.SORT;
 
 @ExtendWith(MockitoExtension.class)
-public class BookingServiceImplTest {
+public class BookingServiceTest {
     @Mock
     private UserRepository userRepository;
     @Mock
@@ -35,7 +35,7 @@ public class BookingServiceImplTest {
     @Mock
     private StartAndEndValidator startAndEndValidator;
     @InjectMocks
-    private BookingServiceImpl bookingService;
+    private BookingService bookingService;
     private long bookingId;
     private Booking booking;
     private Item item;
