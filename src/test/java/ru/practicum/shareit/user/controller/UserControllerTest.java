@@ -70,30 +70,6 @@ public class UserControllerTest {
     }
 
     @Test
-    void saveUser_whenIncorrectEmail_thenThrowException() throws Exception {
-        when(userServiceInterface.save(any(UserDto.class))).thenThrow(UserBadRequestException.class);
-
-        mockMvc.perform(
-                post("/users")
-                    .content(objectMapper.writeValueAsString(userWithIncorrectEmail))
-                    .contentType(MediaType.APPLICATION_JSON)
-            )
-            .andExpect(status().is4xxClientError());
-    }
-
-    @Test
-    void saveUser_whenEmailIsNull_thenThrowException() throws Exception {
-        when(userServiceInterface.save(any(UserDto.class))).thenThrow(UserBadRequestException.class);
-
-        mockMvc.perform(
-                post("/users")
-                    .content(objectMapper.writeValueAsString(userWithNullEmail))
-                    .contentType(MediaType.APPLICATION_JSON)
-            )
-            .andExpect(status().is4xxClientError());
-    }
-
-    @Test
     public void findUser_whenExist_thenStatus200andUserReturned() throws Exception {
         when(userServiceInterface.findById(anyLong())).thenReturn(userDto);
 

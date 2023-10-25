@@ -339,7 +339,8 @@ public class BookingServiceTest {
     void findByUserIdAndState_whenStatusIsUnsupported_thenExceptionReturned() {
         when(userRepository.findById(2L)).thenReturn(Optional.of(notOwner));
 
-        assertThrows(UnsupportedStatusException.class, () -> bookingService.findByUserIdAndState(notOwner.getId(), String.valueOf("UNSUPPORTED"), 0, 10));
+        assertThrows(UnsupportedStatusException.class,
+            () -> bookingService.findByUserIdAndState(notOwner.getId(), String.valueOf("UNSUPPORTED"), 0, 10));
     }
 
     @Test

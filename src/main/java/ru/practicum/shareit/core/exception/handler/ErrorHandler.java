@@ -19,12 +19,6 @@ public class ErrorHandler {
         return new ErrorResponse(exception.getMessage());
     }
 
-    @ExceptionHandler
-    @ResponseStatus(HttpStatus.CONFLICT)
-    public ErrorResponse handleConflictException(final ConflictException exception) {
-        return new ErrorResponse(exception.getMessage());
-    }
-
     @ExceptionHandler({UnsupportedStatusException.class, Exception.class})
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ErrorResponse handleStatusException(final Exception exception) {
