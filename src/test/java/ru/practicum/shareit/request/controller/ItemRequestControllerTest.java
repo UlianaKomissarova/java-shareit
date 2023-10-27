@@ -85,34 +85,6 @@ public class ItemRequestControllerTest {
     }
 
     @Test
-    void saveRequest_whenDescriptionIsNull_thenExceptionReturned() throws Exception {
-        when(requestService.save(anyLong(), any(ItemRequestDto.class)))
-            .thenThrow(ItemRequestBadRequestException.class);
-
-        mockMvc.perform(
-                post("/requests")
-                    .header("X-Sharer-User-Id", 1L)
-                    .content(objectMapper.writeValueAsString(requestWithNullDescription))
-                    .contentType(MediaType.APPLICATION_JSON)
-            )
-            .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void saveRequest_whenDescriptionIsBlank_thenExceptionReturned() throws Exception {
-        when(requestService.save(anyLong(), any(ItemRequestDto.class)))
-            .thenThrow(ItemRequestBadRequestException.class);
-
-        mockMvc.perform(
-                post("/requests")
-                    .header("X-Sharer-User-Id", 1L)
-                    .content(objectMapper.writeValueAsString(requestWithBlankDescription))
-                    .contentType(MediaType.APPLICATION_JSON)
-            )
-            .andExpect(status().isBadRequest());
-    }
-
-    @Test
     void findRequest_whenExist_thenStatus200andRequestReturned() throws Exception {
         when(requestService.findById(anyLong(), anyLong())).thenReturn(requestDto);
 

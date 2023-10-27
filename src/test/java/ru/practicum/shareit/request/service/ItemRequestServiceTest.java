@@ -6,12 +6,13 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.*;
 import ru.practicum.shareit.core.exception.exceptions.*;
-import ru.practicum.shareit.item.storage.ItemRepository;
+import ru.practicum.shareit.item.service.ItemService;
 import ru.practicum.shareit.request.dto.*;
 import ru.practicum.shareit.request.model.ItemRequest;
 import ru.practicum.shareit.request.repository.ItemRequestRepository;
+import ru.practicum.shareit.user.dto.*;
 import ru.practicum.shareit.user.model.User;
-import ru.practicum.shareit.user.repository.UserRepository;
+import ru.practicum.shareit.user.service.UserService;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -22,18 +23,19 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class ItemRequestServiceTest {
+    @InjectMocks
+    private ItemRequestService requestService;
     @Mock
     private ItemRequestRepository requestRepository;
     @Mock
-    private UserRepository userRepository;
+    private UserService userService;
     @Mock
-    private ItemRepository itemRepository;
-    @InjectMocks
-    private ItemRequestService requestService;
+    private ItemService itemService;
     private long requestId;
     private long userId;
     private ItemRequest expectedRequest;
     private User requester;
+    private UserDto requesterDto;
     @Captor
     private ArgumentCaptor<ItemRequest> captor;
 
@@ -41,6 +43,7 @@ public class ItemRequestServiceTest {
     public void init() {
         userId = 1L;
         requester = new User(userId, "test", "test@mail.ru");
+        requesterDto = UserMapper.toUserDto(requester);
 
         requestId = 1L;
         expectedRequest = new ItemRequest(requestId, "good", requester, LocalDateTime.now());
@@ -48,7 +51,6 @@ public class ItemRequestServiceTest {
 
     @Test
     void findRequestById_whenRequestFound_thenRequestReturned() {
-        when(userRepository.findById(userId)).thenReturn(Optional.of(requester));
         when(requestRepository.findById(requestId)).thenReturn(Optional.of(expectedRequest));
 
         ItemRequestDto actual = requestService.findById(userId, requestId);
@@ -59,22 +61,13 @@ public class ItemRequestServiceTest {
 
     @Test
     void findRequestById_whenRequestNotFound_thenExceptionReturned() {
-        when(userRepository.findById(userId)).thenReturn(Optional.of(requester));
         when(requestRepository.findById(requestId)).thenReturn(Optional.empty());
 
         assertThrows(RequestNotFoundException.class, () -> requestService.findById(userId, requestId));
     }
 
     @Test
-    void findRequestById_whenUserNotFound_thenExceptionReturned() {
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
-
-        assertThrows(UserNotFoundException.class, () -> requestService.findById(userId, requestId));
-    }
-
-    @Test
     void saveRequest_whenInvoked_thenRequestReturned() {
-        when(userRepository.findById(userId)).thenReturn(Optional.of(requester));
         when(requestRepository.save(any())).thenReturn(expectedRequest);
 
         ItemRequestDto actual = requestService.save(userId, RequestMapper.toRequestDto(expectedRequest));
@@ -82,14 +75,12 @@ public class ItemRequestServiceTest {
         assertEquals(expectedRequest.getId(), actual.getId());
         assertEquals(expectedRequest.getDescription(), actual.getDescription());
         verify(requestRepository).save(any(ItemRequest.class));
-        verify(userRepository, times(1)).findById(anyLong());
     }
 
     @Test
     void findRequests_whenRequestsFound_thenRequestListReturned() {
         expectedRequest.setRequester(null);
         List<ItemRequest> requests = List.of(expectedRequest);
-        when(userRepository.findById(userId)).thenReturn(Optional.of(requester));
         when(requestRepository.findByRequesterId(1L, Sort.by("created").descending()))
             .thenReturn(requests);
 
@@ -100,7 +91,6 @@ public class ItemRequestServiceTest {
 
         assertEquals(requests, actualRequests);
         assertEquals(1, actualRequests.size());
-        verify(userRepository, times(1)).findById(anyLong());
         verify(requestRepository, times(1))
             .findByRequesterId(userId, Sort.by("created").descending());
     }
@@ -108,7 +98,6 @@ public class ItemRequestServiceTest {
     @Test
     void findRequests_whenEmptyList_thenEmptyListReturned() {
         List<ItemRequest> requests = List.of();
-        when(userRepository.findById(userId)).thenReturn(Optional.of(requester));
         when(requestRepository.findByRequesterId(1L, Sort.by("created").descending()))
             .thenReturn(requests);
 
@@ -119,7 +108,6 @@ public class ItemRequestServiceTest {
 
         assertEquals(requests, actualRequests);
         assertTrue(actualRequests.isEmpty());
-        verify(userRepository, times(1)).findById(anyLong());
         verify(requestRepository, times(1))
             .findByRequesterId(userId, Sort.by("created").descending());
     }
@@ -129,7 +117,6 @@ public class ItemRequestServiceTest {
         expectedRequest.setRequester(null);
         List<ItemRequest> requests = List.of(expectedRequest);
         Pageable pageable = PageRequest.of(0, 10, Sort.by("created").descending());
-        when(userRepository.findById(userId)).thenReturn(Optional.of(requester));
         when(requestRepository.findByRequesterIdIsNot(1L, pageable)).thenReturn(requests);
 
         List<ItemRequest> actualRequests = requestService.findAllFromOtherUsers(userId, 0, 10)
@@ -139,13 +126,12 @@ public class ItemRequestServiceTest {
 
         assertEquals(requests, actualRequests);
         assertEquals(1, actualRequests.size());
-        verify(userRepository, times(1)).findById(anyLong());
         verify(requestRepository, times(1)).findByRequesterIdIsNot(userId, pageable);
     }
 
     @Test
     void findRequestsFromOtherUsers_whenIncorrectPagination_thenExceptionReturned() {
-        assertThrows(ItemRequestBadRequestException.class,
+        assertThrows(PaginationBadRequestException.class,
             () -> requestService.findAllFromOtherUsers(2L, -1, 0));
     }
 }

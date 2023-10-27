@@ -5,15 +5,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.*;
-import ru.practicum.shareit.booking.model.Booking;
-import ru.practicum.shareit.booking.repository.BookingRepository;
+import ru.practicum.shareit.booking.service.BookingService;
 import ru.practicum.shareit.core.exception.exceptions.*;
 import ru.practicum.shareit.item.dto.*;
 import ru.practicum.shareit.item.model.*;
 import ru.practicum.shareit.item.storage.*;
-import ru.practicum.shareit.request.repository.ItemRequestRepository;
+import ru.practicum.shareit.request.model.ItemRequest;
+import ru.practicum.shareit.request.service.ItemRequestService;
+import ru.practicum.shareit.user.dto.*;
 import ru.practicum.shareit.user.model.User;
-import ru.practicum.shareit.user.repository.UserRepository;
+import ru.practicum.shareit.user.service.UserService;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -26,22 +27,25 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 public class ItemServiceTest {
     @Mock
-    private UserRepository userRepository;
+    private UserService userService;
     @Mock
     private ItemRepository itemRepository;
     @Mock
     private CommentRepository commentRepository;
     @Mock
-    private BookingRepository bookingRepository;
+    private BookingService bookingService;
     @Mock
-    private ItemRequestRepository requestRepository;
+    private ItemRequestService requestService;
     @InjectMocks
     private ItemService itemService;
     private long itemId;
     private long userId;
     private Item expectedItem;
     private User user;
+    private UserDto userDto;
     private User notOwner;
+    private UserDto notOwnerDto;
+    private Comment expectedComment;
     @Captor
     private ArgumentCaptor<Item> captor;
 
@@ -49,16 +53,25 @@ public class ItemServiceTest {
     public void init() {
         userId = 1L;
         user = new User(userId, "test", "test@mail.ru");
+        userDto = UserMapper.toUserDto(user);
 
         itemId = 1L;
         expectedItem = new Item(itemId, "tool", "cool tool", true, userId, null);
 
         notOwner = new User(2L, "fake", "fake@mail.ru");
+        notOwnerDto = UserMapper.toUserDto(notOwner);
+
+        expectedComment = Comment.builder()
+            .id(1L)
+            .text("cool")
+            .item(expectedItem)
+            .author(user)
+            .created(LocalDateTime.now())
+            .build();
     }
 
     @Test
     void saveItem_whenInvoked_thenItemReturned() {
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(itemRepository.save(any())).thenReturn(expectedItem);
 
         ItemDto actual = itemService.save(userId, ItemMapper.toItemDto(expectedItem));
@@ -68,65 +81,31 @@ public class ItemServiceTest {
         assertEquals(expectedItem.getDescription(), actual.getDescription());
         assertEquals(expectedItem.getAvailable(), actual.getAvailable());
         verify(itemRepository).save(any(Item.class));
-        verify(userRepository, times(1)).findById(anyLong());
     }
 
     @Test
-    void saveComment_whenInvoked_thenCommentReturned() {
-        Comment expectedComment = Comment.builder()
-            .id(1L)
-            .text("cool")
-            .item(expectedItem)
-            .author(user)
-            .created(LocalDateTime.now())
-            .build();
-
-        List<Booking> bookings = List.of(new Booking(
+    void saveItem_withRequest_thenItemReturned() {
+        ItemRequest request = new ItemRequest(
             1L,
-            LocalDateTime.of(2011, 11, 11, 11, 11),
-            LocalDateTime.of(2012, 11, 11, 11, 11),
-            expectedItem,
-            user,
-            null)
+            "want this",
+            notOwner,
+            LocalDateTime.now()
         );
 
-        when(commentRepository.save(any())).thenReturn(expectedComment);
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(itemRepository.findById(any())).thenReturn(Optional.of(expectedItem));
-        when(bookingRepository.findBookingsToAddComment(anyLong(), anyLong(), any())).thenReturn(bookings);
+        expectedItem.setRequest(request);
+        when(itemRepository.save(any())).thenReturn(expectedItem);
 
-        CommentDto actual = itemService.saveComment(userId, itemId, CommentMapper.toCommentDto(expectedComment));
+        ItemDto actual = itemService.save(userId, ItemMapper.toItemDto(expectedItem));
 
-        assertEquals(expectedComment.getId(), actual.getId());
-        assertEquals(expectedComment.getCreated(), actual.getCreated());
-        assertEquals(expectedComment.getText(), actual.getText());
-        verify(commentRepository).save(any(Comment.class));
-        verify(userRepository, times(1)).findById(anyLong());
-        verify(itemRepository, times(1)).findById(anyLong());
-    }
-
-    @Test
-    void saveComment_whenOwner_thenExceptionReturned() {
-        Comment expectedComment = Comment.builder()
-            .id(1L)
-            .text("cool")
-            .item(expectedItem)
-            .author(user)
-            .created(LocalDateTime.now())
-            .build();
-
-        List<Booking> bookings = List.of();
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(itemRepository.findById(any())).thenReturn(Optional.of(expectedItem));
-        when(bookingRepository.findBookingsToAddComment(anyLong(), anyLong(), any())).thenReturn(bookings);
-
-        assertThrows(CommentBadRequestException.class,
-            () -> itemService.saveComment(userId, itemId, CommentMapper.toCommentDto(expectedComment)));
+        assertEquals(expectedItem.getId(), actual.getId());
+        assertEquals(expectedItem.getName(), actual.getName());
+        assertEquals(expectedItem.getDescription(), actual.getDescription());
+        assertEquals(expectedItem.getAvailable(), actual.getAvailable());
+        verify(itemRepository).save(any(Item.class));
     }
 
     @Test
     void findItemById_whenOwnerRequests_thenItemReturned() {
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(itemRepository.findById(itemId)).thenReturn(Optional.of(expectedItem));
 
         ItemDto actual = itemService.findById(userId, itemId);
@@ -137,7 +116,6 @@ public class ItemServiceTest {
 
     @Test
     void findItemById_whenNotOwnerRequests_thenItemReturned() {
-        when(userRepository.findById(notOwner.getId())).thenReturn(Optional.of(notOwner));
         when(itemRepository.findById(itemId)).thenReturn(Optional.of(expectedItem));
 
         ItemDto actual = itemService.findById(notOwner.getId(), itemId);
@@ -147,29 +125,24 @@ public class ItemServiceTest {
     }
 
     @Test
-    void findItemById_whenCommentsNotEmpty_thenItemReturned() {
-        Comment expectedComment = Comment.builder()
-            .id(1L)
-            .text("cool")
-            .item(expectedItem)
-            .author(notOwner)
-            .created(LocalDateTime.now())
-            .build();
-
-        List<Booking> bookings = List.of(new Booking(
-            1L,
-            LocalDateTime.of(2011, 11, 11, 11, 11),
-            LocalDateTime.of(2012, 11, 11, 11, 11),
-            expectedItem,
-            notOwner,
-            null)
-        );
-
+    void saveComment_whenInvoked_thenCommentReturned() {
+        when(itemRepository.findById(itemId)).thenReturn(Optional.of(expectedItem));
+        doNothing().when(bookingService).validateBookingsToAddComment(anyLong(), anyLong());
         when(commentRepository.save(any())).thenReturn(expectedComment);
-        when(bookingRepository.findBookingsToAddComment(anyLong(), anyLong(), any())).thenReturn(bookings);
+
+        CommentDto actual = itemService.saveComment(1L, 1L, CommentMapper.toCommentDto(expectedComment));
+
+        assertEquals(expectedComment.getId(), actual.getId());
+        assertEquals(expectedComment.getCreated(), actual.getCreated());
+        assertEquals(expectedComment.getText(), actual.getText());
+        verify(commentRepository).save(any(Comment.class));
+    }
+
+    @Test
+    void findItemById_whenCommentsNotEmpty_thenItemReturned() {
+        when(commentRepository.save(any())).thenReturn(expectedComment);
         List<Comment> comments = List.of(expectedComment);
         when(commentRepository.findAllByItemId(itemId)).thenReturn(comments);
-        when(userRepository.findById(notOwner.getId())).thenReturn(Optional.of(notOwner));
         when(itemRepository.findById(itemId)).thenReturn(Optional.of(expectedItem));
 
         CommentDto commentDto = CommentMapper.toCommentDto(expectedComment);
@@ -183,7 +156,6 @@ public class ItemServiceTest {
 
     @Test
     void findItemById_whenItemNotFound_thenExceptionReturned() {
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(itemRepository.findById(itemId)).thenReturn(Optional.empty());
 
         assertThrows(ItemNotFoundException.class, () -> itemService.findById(userId, itemId));
@@ -191,9 +163,7 @@ public class ItemServiceTest {
 
     @Test
     void findItemById_whenUserNotFound_thenExceptionReturned() {
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
-
-        assertThrows(UserNotFoundException.class, () -> itemService.findById(userId, itemId));
+        assertThrows(ItemNotFoundException.class, () -> itemService.findById(userId, itemId));
     }
 
     @Test
@@ -265,7 +235,6 @@ public class ItemServiceTest {
         updatedItem.setName("Upd");
         updatedItem.setDescription("upd");
         updatedItem.setAvailable(false);
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(itemRepository.findById(itemId)).thenReturn(Optional.of(expectedItem));
         when(itemRepository.save(any())).thenReturn(expectedItem);
 
@@ -284,12 +253,42 @@ public class ItemServiceTest {
     void updateItem_whenNotOwnerRequests_thenExceptionReturned() {
         Item updatedItem = new Item();
         updatedItem.setName("Upd");
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(itemRepository.findById(itemId)).thenReturn(Optional.of(expectedItem));
         when(itemRepository.save(any())).thenReturn(expectedItem);
 
         itemService.save(userId, ItemMapper.toItemDto(expectedItem));
 
         assertThrows(UserNotFoundException.class, () -> itemService.update(2L, itemId, ItemMapper.toItemDto(updatedItem)));
+    }
+
+    @Test
+    void getItemsByRequestId_whenInvoked_thenReturnList() {
+        ItemRequest request = new ItemRequest(
+            1L,
+            "want this",
+            notOwner,
+            LocalDateTime.now()
+        );
+
+        expectedItem.setRequest(request);
+        List<ItemDtoInRequest> expected = List.of(ItemMapper.toItemDtoInRequest(expectedItem));
+        when(itemRepository.findByRequestId(1L)).thenReturn(List.of(expectedItem));
+
+        List<ItemDtoInRequest> actual = itemService.getItemsByRequestId(1L);
+
+        assertEquals(actual.size(), expected.size());
+        assertEquals(actual.get(0).getDescription(), expected.get(0).getDescription());
+        assertEquals(actual.get(0).getRequestId(), expected.get(0).getRequestId());
+        assertEquals(actual.get(0).getName(), expected.get(0).getName());
+        assertEquals(actual.get(0).getAvailable(), expected.get(0).getAvailable());
+    }
+
+    @Test
+    void hasUserZeroItems_whenZero_thenReturnTrue() {
+        List<Item> items = List.of();
+        when(itemRepository.findAll()).thenReturn(items);
+        boolean actual = itemService.hasUserZeroItems(2L);
+
+        assertTrue(actual);
     }
 }

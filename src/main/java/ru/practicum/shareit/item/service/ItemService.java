@@ -1,41 +1,49 @@
 package ru.practicum.shareit.item.service;
 
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.practicum.shareit.booking.model.Booking;
-import ru.practicum.shareit.booking.repository.BookingRepository;
+import ru.practicum.shareit.booking.service.BookingService;
 import ru.practicum.shareit.core.exception.exceptions.*;
 import ru.practicum.shareit.item.dto.*;
 import ru.practicum.shareit.item.model.*;
 import ru.practicum.shareit.item.storage.*;
 import ru.practicum.shareit.request.model.ItemRequest;
-import ru.practicum.shareit.request.repository.ItemRequestRepository;
+import ru.practicum.shareit.request.service.ItemRequestService;
 import ru.practicum.shareit.user.model.User;
-import ru.practicum.shareit.user.repository.UserRepository;
+import ru.practicum.shareit.user.service.UserService;
 
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static ru.practicum.shareit.booking.dto.BookingMapper.toShortBookingDto;
 import static ru.practicum.shareit.item.dto.CommentMapper.*;
 import static ru.practicum.shareit.item.dto.ItemMapper.*;
 
 @Service
-@RequiredArgsConstructor
 public class ItemService implements ItemServiceInterface {
     private final ItemRepository itemRepository;
-    private final UserRepository userRepository;
     private final CommentRepository commentRepository;
-    private final BookingRepository bookingRepository;
-    private final ItemRequestRepository requestRepository;
+    private final UserService userService;
+    private final BookingService bookingService;
+    private final ItemRequestService requestService;
+
+    @Autowired
+    public ItemService(ItemRepository itemRepository, CommentRepository commentRepository, UserService userService,
+        @Lazy BookingService bookingService, @Lazy ItemRequestService requestService) {
+        this.itemRepository = itemRepository;
+        this.commentRepository = commentRepository;
+        this.userService = userService;
+        this.bookingService = bookingService;
+        this.requestService = requestService;
+    }
 
     @Transactional
     @Override
     public ItemDto save(Long userId, ItemDto dto) {
-        getExistingUser(userId);
+        userService.getExistingUser(userId);
 
         Item item = toItem(dto);
         item.setOwner(userId);
@@ -62,13 +70,13 @@ public class ItemService implements ItemServiceInterface {
     @Transactional(readOnly = true)
     @Override
     public ItemDto findById(Long userId, Long itemId) {
-        getExistingUser(userId);
+        userService.getExistingUser(userId);
         Item item = getExistingItem(itemId);
         ItemDto result = toItemDto(item);
-        fillComments(result, itemId);
+        fillItemWithComments(result, itemId);
 
         if (item.getOwner().equals(userId)) {
-            fillBookings(result);
+            bookingService.fillItemWithBookings(result);
             return result;
         }
 
@@ -107,58 +115,16 @@ public class ItemService implements ItemServiceInterface {
         return result;
     }
 
-    @Transactional
-    @Override
-    public CommentDto saveComment(Long userId, Long itemId, CommentDto dto) {
-        User user = getExistingUser(userId);
-        Item item = getExistingItem(itemId);
-
-        List<Booking> previousBookings = bookingRepository.findBookingsToAddComment(itemId, userId, LocalDateTime.now());
-        validateBookingForComment(previousBookings);
-
-        Comment comment = toComment(dto);
-        comment.setCreated(LocalDateTime.now());
-        comment.setItem(item);
-        comment.setAuthor(user);
-
-        return toCommentDto(commentRepository.save(comment));
-    }
-
-    private void validateBookingForComment(List<Booking> previousBookings) {
-        if (previousBookings.isEmpty()) {
-            throw new CommentBadRequestException(
-                "Пользователь может оставить комментарий только на вещь, которую ранее использовал."
-            );
-        }
-        for (Booking booking : previousBookings) {
-            if (booking.getEnd().isAfter(LocalDateTime.now())) {
-                throw new CommentBadRequestException("Оставить комментарий можно только после окончания срока аренды");
-            }
-        }
-    }
-
-    private User getExistingUser(long id) {
-        return userRepository.findById(id).orElseThrow(
-            () -> new UserNotFoundException("Пользователь с id " + id + " не найден.")
-        );
-    }
-
-    private Item getExistingItem(long id) {
+    public Item getExistingItem(long id) {
         return itemRepository.findById(id).orElseThrow(
             () -> new ItemNotFoundException("Товар с id " + id + " не найден.")
-        );
-    }
-
-    private ItemRequest getExistingRequest(long id) {
-        return requestRepository.findById(id).orElseThrow(
-            () -> new RequestNotFoundException("Запрос с id " + id + " не найден.")
         );
     }
 
     private void setRequestWhenCreateItem(Item item, ItemDto dto) {
         if (dto.getRequestId() != null) {
             Long requestId = dto.getRequestId();
-            ItemRequest request = getExistingRequest(requestId);
+            ItemRequest request = requestService.getExistingRequest(requestId);
             item.setRequest(request);
         }
     }
@@ -179,13 +145,41 @@ public class ItemService implements ItemServiceInterface {
 
     private ItemDto fillItemWithCommentsAndBookings(Item item) {
         ItemDto result = toItemDto(item);
-        fillComments(result, item.getId());
-        fillBookings(result);
+        fillItemWithComments(result, item.getId());
+        bookingService.fillItemWithBookings(result);
 
         return result;
     }
 
-    private void fillComments(ItemDto result, Long itemId) {
+    public List<ItemDtoInRequest> getItemsByRequestId(long id) {
+        return itemRepository.findByRequestId(id)
+            .stream().map(ItemMapper::toItemDtoInRequest)
+            .collect(Collectors.toList());
+    }
+
+    public boolean hasUserZeroItems(long userId) {
+        return itemRepository.findAll()
+            .stream()
+            .filter(item -> item.getOwner().equals(userId))
+            .findAny().isEmpty();
+    }
+
+    @Transactional
+    @Override
+    public CommentDto saveComment(Long userId, Long itemId, CommentDto dto) {
+        User user = userService.getExistingUser(userId);
+        Item item = getExistingItem(itemId);
+        bookingService.validateBookingsToAddComment(userId, itemId);
+
+        Comment comment = toComment(dto);
+        comment.setCreated(LocalDateTime.now());
+        comment.setItem(item);
+        comment.setAuthor(user);
+
+        return toCommentDto(commentRepository.save(comment));
+    }
+
+    public void fillItemWithComments(ItemDto result, Long itemId) {
         List<Comment> comments = commentRepository.findAllByItemId(itemId);
         if (!comments.isEmpty()) {
             result.setComments(comments.stream()
@@ -193,23 +187,6 @@ public class ItemService implements ItemServiceInterface {
                 .collect(Collectors.toList()));
         } else {
             result.setComments(new ArrayList<>());
-        }
-    }
-
-    private void fillBookings(ItemDto result) {
-        LocalDateTime now = LocalDateTime.now();
-        bookingRepository
-            .findBookingByItemIdAndStartBefore(result.getId(), now)
-            .stream()
-            .findFirst().ifPresent(lastBooking -> result.setLastBooking(toShortBookingDto(lastBooking)));
-
-        bookingRepository
-            .findBookingByItemIdAndStartAfter(result.getId(), now)
-            .stream()
-            .findFirst().ifPresent(nextBooking -> result.setNextBooking(toShortBookingDto(nextBooking)));
-
-        if (result.getLastBooking() == null) {
-            result.setNextBooking(null);
         }
     }
 }

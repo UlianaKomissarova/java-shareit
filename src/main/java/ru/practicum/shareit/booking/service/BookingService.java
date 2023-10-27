@@ -8,10 +8,12 @@ import ru.practicum.shareit.booking.dto.*;
 import ru.practicum.shareit.booking.model.*;
 import ru.practicum.shareit.booking.repository.BookingRepository;
 import ru.practicum.shareit.core.exception.exceptions.*;
+import ru.practicum.shareit.core.validation.PaginationValidator;
+import ru.practicum.shareit.item.dto.ItemDto;
 import ru.practicum.shareit.item.model.Item;
-import ru.practicum.shareit.item.storage.ItemRepository;
+import ru.practicum.shareit.item.service.ItemService;
 import ru.practicum.shareit.user.model.User;
-import ru.practicum.shareit.user.repository.UserRepository;
+import ru.practicum.shareit.user.service.UserService;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -24,16 +26,16 @@ import static ru.practicum.shareit.booking.model.Status.*;
 @RequiredArgsConstructor
 public class BookingService implements BookingServiceInterface {
     private final BookingRepository bookingRepository;
-    private final ItemRepository itemRepository;
-    private final UserRepository userRepository;
+    private final ItemService itemService;
+    private final UserService userService;
     private final StartAndEndValidator startAndEndValidator;
     public static final Sort SORT = Sort.by("start").descending();
 
     @Transactional
     @Override
     public BookingDto save(Long userId, ShortBookingDto dto) {
-        Item item = getExistingItem(dto.getItemId());
-        User booker = getExistingUser(userId);
+        Item item = itemService.getExistingItem(dto.getItemId());
+        User booker = userService.getExistingUser(userId);
 
         if (item.getOwner().equals(userId)) {
             throw new BookingNotFoundException("Вещь не может быть забронирована ее владельцем.");
@@ -54,7 +56,7 @@ public class BookingService implements BookingServiceInterface {
     @Override
     public BookingDto approve(Long userId, Long bookingId, Boolean approved) {
         Booking booking = getExistingBooking(bookingId);
-        Item item = getExistingItem(booking.getItem().getId());
+        Item item = itemService.getExistingItem(booking.getItem().getId());
 
         if (!item.getOwner().equals(userId)) {
             throw new BookingNotFoundException("Запрос может быть выполнен только владельцем вещи.");
@@ -74,7 +76,7 @@ public class BookingService implements BookingServiceInterface {
     @Transactional(readOnly = true)
     @Override
     public BookingDto findById(Long id, Long userId) {
-        getExistingUser(userId);
+        userService.getExistingUser(userId);
         Booking booking = getExistingBooking(id);
         validateRequester(booking, userId);
 
@@ -84,8 +86,8 @@ public class BookingService implements BookingServiceInterface {
     @Transactional(readOnly = true)
     @Override
     public Collection<BookingDto> findByUserIdAndState(Long userId, String state, int from, int size) {
-        validatePagination(from, size);
-        getExistingUser(userId);
+        PaginationValidator.validatePagination(from, size);
+        userService.getExistingUser(userId);
 
         state = checkUserBookingState(state);
         Pageable pageable = PageRequest.of(from / size, size, SORT);
@@ -110,7 +112,7 @@ public class BookingService implements BookingServiceInterface {
             case "REJECTED":
                 bookings = bookingRepository.findByBookerIdAndStatus(userId, REJECTED, pageable);
                 break;
-            default :
+            default:
                 throw new UnsupportedStatusException("Unknown state: UNSUPPORTED_STATUS");
         }
 
@@ -122,8 +124,8 @@ public class BookingService implements BookingServiceInterface {
     @Transactional(readOnly = true)
     @Override
     public Collection<BookingDto> findBookingsByItemOwnerId(Long userId, String state, int from, int size) {
-        validatePagination(from, size);
-        getExistingUser(userId);
+        PaginationValidator.validatePagination(from, size);
+        userService.getExistingUser(userId);
         hasUserZeroItems(userId);
 
         state = checkUserBookingState(state);
@@ -167,18 +169,6 @@ public class BookingService implements BookingServiceInterface {
         return state;
     }
 
-    private User getExistingUser(long id) {
-        return userRepository.findById(id).orElseThrow(
-            () -> new UserNotFoundException("Пользователь с id " + id + " не найден.")
-        );
-    }
-
-    private Item getExistingItem(long id) {
-        return itemRepository.findById(id).orElseThrow(
-            () -> new ItemNotFoundException("Товар с id " + id + " не найден.")
-        );
-    }
-
     private Booking getExistingBooking(long id) {
         return bookingRepository.findById(id).orElseThrow(
             () -> new BookingNotFoundException("Бронирование с id " + id + " не найдено.")
@@ -186,12 +176,7 @@ public class BookingService implements BookingServiceInterface {
     }
 
     private void hasUserZeroItems(long userId) {
-        boolean hasZeroItems = itemRepository.findAll()
-            .stream()
-            .filter(item -> item.getOwner().equals(userId))
-            .findAny().isEmpty();
-
-        if (hasZeroItems) {
+        if (itemService.hasUserZeroItems(userId)) {
             throw new BookingBadRequestException("Этот запрос имеет смысл для владельца хотя бы одной вещи. ");
         }
     }
@@ -206,9 +191,36 @@ public class BookingService implements BookingServiceInterface {
         }
     }
 
-    private void validatePagination(Integer from, Integer size) {
-        if (from < 0 || size < 0) {
-            throw new BookingBadRequestException("Параметры пагинации должны быть положительными.");
+    public void validateBookingsToAddComment(Long userId, Long itemId) {
+        List<Booking> previousBookings = bookingRepository.findBookingsToAddComment(itemId, userId, LocalDateTime.now());
+
+        if (previousBookings.isEmpty()) {
+            throw new CommentBadRequestException(
+                "Пользователь может оставить комментарий только на вещь, которую ранее использовал."
+            );
+        }
+
+        for (Booking booking : previousBookings) {
+            if (booking.getEnd().isAfter(LocalDateTime.now())) {
+                throw new CommentBadRequestException("Оставить комментарий можно только после окончания срока аренды");
+            }
+        }
+    }
+
+    public void fillItemWithBookings(ItemDto result) {
+        LocalDateTime now = LocalDateTime.now();
+        bookingRepository
+            .findBookingByItemIdAndStartBefore(result.getId(), now)
+            .stream()
+            .findFirst().ifPresent(lastBooking -> result.setLastBooking(toShortBookingDto(lastBooking)));
+
+        bookingRepository
+            .findBookingByItemIdAndStartAfter(result.getId(), now)
+            .stream()
+            .findFirst().ifPresent(nextBooking -> result.setNextBooking(toShortBookingDto(nextBooking)));
+
+        if (result.getLastBooking() == null) {
+            result.setNextBooking(null);
         }
     }
 }

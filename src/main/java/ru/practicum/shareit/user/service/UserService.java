@@ -57,7 +57,7 @@ public class UserService implements UserServiceInterface {
         userRepository.deleteById(id);
     }
 
-    private User getExistingUser(long id) {
+    public User getExistingUser(long id) {
         return userRepository.findById(id).orElseThrow(
             () -> new UserNotFoundException("Пользователь с id " + id + " не найден.")
         );

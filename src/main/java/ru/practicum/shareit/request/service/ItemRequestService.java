@@ -4,14 +4,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.practicum.shareit.core.exception.exceptions.*;
-import ru.practicum.shareit.item.dto.*;
-import ru.practicum.shareit.item.storage.ItemRepository;
+import ru.practicum.shareit.core.exception.exceptions.RequestNotFoundException;
+import ru.practicum.shareit.core.validation.PaginationValidator;
+import ru.practicum.shareit.item.dto.ItemDtoInRequest;
+import ru.practicum.shareit.item.service.ItemService;
 import ru.practicum.shareit.request.dto.*;
 import ru.practicum.shareit.request.model.ItemRequest;
 import ru.practicum.shareit.request.repository.ItemRequestRepository;
 import ru.practicum.shareit.user.model.User;
-import ru.practicum.shareit.user.repository.UserRepository;
+import ru.practicum.shareit.user.service.UserService;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -23,14 +24,14 @@ import static ru.practicum.shareit.request.dto.RequestMapper.*;
 @RequiredArgsConstructor
 public class ItemRequestService implements ItemRequestServiceInterface {
     private final ItemRequestRepository requestRepository;
-    private final UserRepository userRepository;
-    private final ItemRepository itemRepository;
+    private final UserService userService;
+    private final ItemService itemService;
     public static final Sort SORT = Sort.by("created").descending();
 
     @Transactional
     @Override
     public ItemRequestDto save(Long userId, ItemRequestDto dto) {
-        User user = getExistingUser(userId);
+        User user = userService.getExistingUser(userId);
 
         ItemRequest request = toRequest(dto);
         request.setRequester(user);
@@ -43,7 +44,7 @@ public class ItemRequestService implements ItemRequestServiceInterface {
     @Transactional(readOnly = true)
     @Override
     public ItemRequestDto findById(Long userId, Long requestId) {
-        getExistingUser(userId);
+        userService.getExistingUser(userId);
         ItemRequest request = getExistingRequest(requestId);
         ItemRequestDto result = toRequestDto(request);
         fillRequestsWithItems(result);
@@ -54,7 +55,7 @@ public class ItemRequestService implements ItemRequestServiceInterface {
     @Transactional(readOnly = true)
     @Override
     public Collection<ItemRequestDto> findAll(Long userId) {
-        getExistingUser(userId);
+        userService.getExistingUser(userId);
         List<ItemRequest> requests = requestRepository.findByRequesterId(userId, SORT);
 
         return mapListToDtoList(requests);
@@ -63,8 +64,8 @@ public class ItemRequestService implements ItemRequestServiceInterface {
     @Transactional(readOnly = true)
     @Override
     public Collection<ItemRequestDto> findAllFromOtherUsers(Long userId, Integer from, Integer size) {
-        validatePagination(from, size);
-        getExistingUser(userId);
+        PaginationValidator.validatePagination(from, size);
+        userService.getExistingUser(userId);
         Pageable pageable = PageRequest.of(from / size, size, SORT);
         List<ItemRequest> requests = requestRepository.findByRequesterIdIsNot(userId, pageable);
 
@@ -83,29 +84,14 @@ public class ItemRequestService implements ItemRequestServiceInterface {
         return result;
     }
 
-    private void validatePagination(Integer from, Integer size) {
-        if (from < 0 || size < 0) {
-            throw new ItemRequestBadRequestException("Параметры пагинации должны быть положительными.");
-        }
-    }
-
-    private User getExistingUser(long id) {
-        return userRepository.findById(id).orElseThrow(
-            () -> new UserNotFoundException("Пользователь с id " + id + " не найден.")
-        );
-    }
-
-    private ItemRequest getExistingRequest(long id) {
+    public ItemRequest getExistingRequest(long id) {
         return requestRepository.findById(id).orElseThrow(
             () -> new RequestNotFoundException("Запрос с id " + id + " не найден.")
         );
     }
 
     private void fillRequestsWithItems(ItemRequestDto request) {
-        List<ItemDtoInRequest> items = itemRepository
-            .findByRequestId(request.getId())
-            .stream().map(ItemMapper::toItemDtoInRequest)
-            .collect(Collectors.toList());
+        List<ItemDtoInRequest> items = itemService.getItemsByRequestId(request.getId());
 
         if (!items.isEmpty()) {
             request.setItems(items);
