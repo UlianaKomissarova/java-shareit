@@ -18,6 +18,17 @@ public class BookingMapper {
             .build();
     }
 
+    public static Booking toBookingFromBookingDto(BookingDto dto) {
+        return Booking.builder()
+            .id(dto.getId())
+            .start(dto.getStart())
+            .end(dto.getEnd())
+            .item(dto.getItem())
+            .booker(dto.getBooker())
+            .status(dto.getStatus())
+            .build();
+    }
+
     public static Booking toBooking(ShortBookingDto dto, Item item, User booker) {
         return Booking.builder()
             .start(dto.getStart())
@@ -35,6 +46,16 @@ public class BookingMapper {
             .end(booking.getEnd())
             .itemId(booking.getItem().getId())
             .bookerId(booking.getBooker().getId())
+            .build();
+    }
+
+    public static ShortBookingDto toShortBookingDto(BookingDto dto) {
+        return ShortBookingDto.builder()
+            .id(dto.getId())
+            .start(dto.getStart())
+            .end(dto.getEnd())
+            .itemId(dto.getItem().getId())
+            .bookerId(dto.getBooker().getId())
             .build();
     }
 }
