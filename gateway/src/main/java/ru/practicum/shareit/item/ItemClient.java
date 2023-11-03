@@ -7,6 +7,7 @@ import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.DefaultUriBuilderFactory;
 import ru.practicum.shareit.client.BaseClient;
+import ru.practicum.shareit.core.QueryParametersInterface;
 import ru.practicum.shareit.item.dto.*;
 
 import java.util.Map;
@@ -35,8 +36,8 @@ public class ItemClient extends BaseClient {
 
     public ResponseEntity<Object> getItems(long userId, int from, int size) {
         Map<String, Object> parameters = Map.of(
-            "from", from,
-            "size", size
+            QueryParametersInterface.FROM, from,
+            QueryParametersInterface.SIZE, size
         );
 
         return get("?from={from}&size={size}", userId, parameters);
@@ -52,9 +53,9 @@ public class ItemClient extends BaseClient {
 
     public ResponseEntity<Object> search(long userId, String text, int from, int size) {
         Map<String, Object> parameters = Map.of(
-            "text", text,
-            "from", from,
-            "size", size
+            QueryParametersInterface.TEXT, text,
+            QueryParametersInterface.FROM, from,
+            QueryParametersInterface.SIZE, size
         );
 
         return get("/search?text={text}&from={from}&size={size}", userId, parameters);
